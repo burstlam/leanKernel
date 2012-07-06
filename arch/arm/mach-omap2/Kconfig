@@ -432,4 +432,9 @@ config TUNA_STOCK_RAM
 	help
 	  This is the stock tuna heap size .
 endchoice
+
+config UNLOCK_180MHZ
+	bool "Unlock 180Mhz"
+	default n
+
 endif
