@@ -373,8 +373,8 @@ static int __cpuinit omap_cpu_init(struct cpufreq_policy *policy)
 		cpumask_setall(policy->cpus);
 	}
 
-	/* FIXME: what's the actual transition time? */
-	policy->cpuinfo.transition_latency = 30 * 1000;
+	/* 10us transition time */
+	policy->cpuinfo.transition_latency = 10 * 1000;
 
 	return 0;
 
