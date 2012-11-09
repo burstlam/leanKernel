@@ -19,6 +19,8 @@
 #include <linux/cpu.h>
 #include <linux/cpumask.h>
 #include <linux/cpufreq.h>
+#include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <linux/mutex.h>
 #include <linux/sched.h>
 #include <linux/tick.h>
@@ -61,15 +63,8 @@ static spinlock_t speedchange_cpumask_lock;
 /* Hi speed to bump to from lo speed when load burst (default max) */
 static unsigned int hispeed_freq;
 
-/* When the boostpulse was activated */
-static u64 boostpulse_boosted_time;
-
-/* How long the boostpulse will remain active */
-#define DEFAULT_BOOSTPULSE_DURATION	500000
-#define MAX_BOOSTPULSE_DURATION		5000000
-static int boostpulse_duration;
-
-static u64 input_boost_freq = 1036800;
+/* Frequency bump when the device detects a touch input */
+static unsigned int input_boost_freq = 537600;
 
 /* Go to hi speed when CPU load at or above this value. */
 #define DEFAULT_GO_HISPEED_LOAD 85
@@ -93,11 +88,10 @@ static unsigned long timer_rate;
 #define DEFAULT_ABOVE_HISPEED_DELAY DEFAULT_TIMER_RATE
 static unsigned long above_hispeed_delay_val;
 
-/*
- * Non-zero means longer-term speed boost active.
- */
-
-static int boost_val;
+static bool governidle;
+module_param(governidle, bool, S_IWUSR | S_IRUGO);
+MODULE_PARM_DESC(governidle,
+	"Set to 1 to wake up CPUs from idle to reduce speed (default 0)");
 
 static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		unsigned int event);
@@ -127,7 +121,6 @@ static void cpufreq_interactive_timer(unsigned long data)
 	unsigned int new_freq;
 	unsigned int index;
 	unsigned long flags;
-	u64 now = ktime_to_us(ktime_get());
 
 	smp_rmb();
 
@@ -169,15 +162,9 @@ static void cpufreq_interactive_timer(unsigned long data)
 	if (load_since_change > cpu_load)
 		cpu_load = load_since_change;
 
-	if (boostpulse_boosted_time &&
-			now > boostpulse_boosted_time + boostpulse_duration) {
-		/* Disable the boostpulse. */
-		boostpulse_boosted_time = 0;
-		boostpulse_duration = 0;
-	}
-
-	if (cpu_load >= go_hispeed_load || boost_val || boostpulse_boosted_time) {
-		if (pcpu->target_freq <= pcpu->policy->min) {
+	if (cpu_load >= go_hispeed_load) {
+		if (pcpu->target_freq < hispeed_freq &&
+		    hispeed_freq < pcpu->policy->max) {
 			new_freq = hispeed_freq;
 		} else {
 			new_freq = pcpu->policy->max * cpu_load / 100;
@@ -255,10 +242,11 @@ rearm_if_notmax:
 rearm:
 	if (!timer_pending(&pcpu->cpu_timer)) {
 		/*
-		 * If already at min, cancel the timer if that CPU goes idle.
-		 * We don't need to re-evaluate speed until the next idle exit.
+		 * If governing speed in idle and already at min, cancel the
+		 * timer if that CPU goes idle.  We don't need to re-evaluate
+		 * speed until the next idle exit.
 		 */
-		if (pcpu->target_freq == pcpu->policy->min)
+		if (governidle && pcpu->target_freq == pcpu->policy->min)
 			pcpu->timer_idlecancel = 1;
 
 		pcpu->time_in_idle = get_cpu_idle_time_us(
@@ -283,7 +271,6 @@ static void cpufreq_interactive_idle_start(void)
 	pending = timer_pending(&pcpu->cpu_timer);
 
 	if (pcpu->target_freq != pcpu->policy->min) {
-#ifdef CONFIG_SMP
 		/*
 		 * Entering idle while not at lowest speed.  On some
 		 * platforms this can hold the other CPU(s) at that speed
@@ -300,8 +287,7 @@ static void cpufreq_interactive_idle_start(void)
         		&pcpu->cpu_timer,	
         		jiffies + usecs_to_jiffies(timer_rate));
 		}
-#endif
-	} else {
+	} else if (governidle) {
 		/*
 		 * If at min speed and entering idle after load has
 		 * already been evaluated, and a timer has been set just in
@@ -434,7 +420,7 @@ static void cpufreq_interactive_boost(void)
 static ssize_t show_input_boost_freq(struct kobject *kobj,
 				 struct attribute *attr, char *buf)
 {
-	return sprintf(buf, "%llu\n", input_boost_freq);
+	return sprintf(buf, "%u\n", input_boost_freq);
 }
 
 static ssize_t store_input_boost_freq(struct kobject *kobj,
@@ -442,9 +428,9 @@ static ssize_t store_input_boost_freq(struct kobject *kobj,
 				  size_t count)
 {
 	int ret;
-	u64 val;
+	long unsigned int val;
 
-	ret = strict_strtoull(buf, 0, &val);
+	ret = strict_strtoul(buf, 0, &val);
 	if (ret < 0)
 		return ret;
 	input_boost_freq = val;
@@ -566,14 +552,8 @@ static ssize_t store_timer_rate(struct kobject *kobj,
 static struct global_attr timer_rate_attr = __ATTR(timer_rate, 0644,
 		show_timer_rate, store_timer_rate);
 
-static ssize_t show_boost(struct kobject *kobj, struct attribute *attr,
-			  char *buf)
-{
-	return sprintf(buf, "%d\n", boost_val);
-}
-
-static ssize_t store_boost(struct kobject *kobj, struct attribute *attr,
-			   const char *buf, size_t count)
+static ssize_t store_boostpulse(struct kobject *kobj, struct attribute *attr,
+				const char *buf, size_t count)
 {
 	int ret;
 	unsigned long val;
@@ -581,36 +561,6 @@ static ssize_t store_boost(struct kobject *kobj, struct attribute *attr,
 	ret = kstrtoul(buf, 0, &val);
 	if (ret < 0)
 		return ret;
-
-	boost_val = val;
-
-	if (boost_val) {
-		trace_cpufreq_interactive_boost("on");
-		cpufreq_interactive_boost();
-	} else {
-		trace_cpufreq_interactive_unboost("off");
-	}
-
-	return count;
-}
-
-define_one_global_rw(boost);
-
-static ssize_t store_boostpulse(struct kobject *kobj, struct attribute *attr,
-				const char *buf, size_t count)
-{
-	int ret;
-	unsigned int val;
-
-	ret = sscanf(buf, "%u", &val);
-	if (ret < 0)
-		return ret;
-
-	boostpulse_boosted_time = ktime_to_us(ktime_get());
-	if (val > 1 && val <= MAX_BOOSTPULSE_DURATION)
-		boostpulse_duration = val;
-	else
-		boostpulse_duration = DEFAULT_BOOSTPULSE_DURATION;
 
 	trace_cpufreq_interactive_boost("pulse");
 	cpufreq_interactive_boost();
@@ -627,7 +577,6 @@ static struct attribute *interactive_attributes[] = {
 	&above_hispeed_delay.attr,
 	&min_sample_time_attr.attr,
 	&timer_rate_attr.attr,
-	&boost.attr,
 	&boostpulse.attr,
 	NULL,
 };
@@ -755,7 +704,10 @@ static int __init cpufreq_interactive_init(void)
 	/* Initalize per-cpu timers */
 	for_each_possible_cpu(i) {
 		pcpu = &per_cpu(cpuinfo, i);
-		init_timer(&pcpu->cpu_timer);
+		if (governidle)
+			init_timer(&pcpu->cpu_timer);
+		else
+			init_timer_deferrable(&pcpu->cpu_timer);
 		pcpu->cpu_timer.function = cpufreq_interactive_timer;
 		pcpu->cpu_timer.data = i;
 	}
@@ -796,3 +748,4 @@ MODULE_AUTHOR("Mike Chan <mike@android.com>");
 MODULE_DESCRIPTION("'cpufreq_interactive' - A cpufreq governor for "
 	"Latency sensitive workloads");
 MODULE_LICENSE("GPL");
+
