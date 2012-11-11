@@ -11,16 +11,16 @@
 #include <linux/device.h>
 #include <linux/miscdevice.h>
 
-#define COLORCONTROL_VERSION 3
+#define COLORCONTROL_VERSION 4
 
 extern void colorcontrol_update(bool multiplier_updated);
 
 static bool safety_enabled = true;
 
-static int * v1_offset;
-
 // this is to keep up with cm9 changes
 static int pre_offset = 0;
+
+static int * v1_offset;
 
 static u32 * color_multiplier;
 
@@ -74,7 +74,7 @@ static ssize_t colorcontrol_offset_write(struct device * dev, struct device_attr
     return size;
 }
 
-// imoseyon - le sighhhh
+// Add support to CM9 and 10
 static ssize_t pre_offset_show(struct device * dev, struct device_attribute * attr, char * buf)
 {
     return sprintf(buf, "%i\n", pre_offset);
@@ -179,7 +179,7 @@ static ssize_t blue_multiplier_store(struct device *dev, struct device_attribute
   }
   return size;
 }
-// end 
+// end
 
 static ssize_t colorcontrol_multiplier_read(struct device * dev, struct device_attribute * attr, char * buf)
 {
@@ -269,6 +269,11 @@ static ssize_t colorcontrol_safety_write(struct device * dev, struct device_attr
     return size;
 }
 
+static ssize_t colorcontrol_originalmultiplier_read(struct device * dev, struct device_attribute * attr, char * buf)
+{
+    return sprintf(buf, "%u %u %u\n", original_multiplier[0], original_multiplier[1], original_multiplier[2]);
+}
+
 static ssize_t colorcontrol_version(struct device * dev, struct device_attribute * attr, char * buf)
 {
     return sprintf(buf, "%u\n", COLORCONTROL_VERSION);
@@ -277,9 +282,10 @@ static ssize_t colorcontrol_version(struct device * dev, struct device_attribute
 static DEVICE_ATTR(v1_offset, S_IRUGO | S_IWUGO, colorcontrol_offset_read, colorcontrol_offset_write);
 static DEVICE_ATTR(multiplier, S_IRUGO | S_IWUGO, colorcontrol_multiplier_read, colorcontrol_multiplier_write);
 static DEVICE_ATTR(safety_enabled, S_IRUGO | S_IWUGO, colorcontrol_safety_read, colorcontrol_safety_write);
+static DEVICE_ATTR(original_multiplier, S_IRUGO, colorcontrol_originalmultiplier_read, NULL);
 static DEVICE_ATTR(version, S_IRUGO , colorcontrol_version, NULL);
 
-// cm9 stuff
+// cm9&10 support
 static DEVICE_ATTR(pre_offset, S_IRUGO | S_IWUGO, pre_offset_show, pre_offset_store);
 static DEVICE_ATTR(red_v1_offset, S_IRUGO | S_IWUGO, red_v1_offset_show, red_v1_offset_store);
 static DEVICE_ATTR(green_v1_offset, S_IRUGO | S_IWUGO, green_v1_offset_show, green_v1_offset_store);
@@ -296,17 +302,19 @@ static struct attribute *colorcontrol_attributes[] =
 	&dev_attr_v1_offset.attr,
 	&dev_attr_multiplier.attr,
 	&dev_attr_safety_enabled.attr,
+	&dev_attr_original_multiplier.attr,
 	&dev_attr_version.attr,
-        &dev_attr_pre_offset.attr,
-        &dev_attr_red_v1_offset.attr,
-        &dev_attr_green_v1_offset.attr,
-        &dev_attr_blue_v1_offset.attr,
-	&dev_attr_red_multiplier.attr,
-	&dev_attr_green_multiplier.attr,
-	&dev_attr_blue_multiplier.attr,
-	&dev_attr_red_multiplier_original.attr,
-	&dev_attr_green_multiplier_original.attr,
-	&dev_attr_blue_multiplier_original.attr,
+	// CM9&10 support
+    &dev_attr_pre_offset.attr,
+    &dev_attr_red_v1_offset.attr,
+    &dev_attr_green_v1_offset.attr,
+    &dev_attr_blue_v1_offset.attr,
+    &dev_attr_red_multiplier.attr,
+    &dev_attr_green_multiplier.attr,
+    &dev_attr_blue_multiplier.attr,
+    &dev_attr_red_multiplier_original.attr,
+    &dev_attr_green_multiplier_original.attr,
+    &dev_attr_blue_multiplier_original.attr,
 	NULL
     };
 
@@ -320,10 +328,11 @@ static struct miscdevice colorcontrol_device =
 	.minor = MISC_DYNAMIC_MINOR,
 	.name = "colorcontrol",
     };
+
 static struct miscdevice samoled_color_device = 
     {
-	.minor = MISC_DYNAMIC_MINOR,
-	.name = "samoled_color",
+    .minor = MISC_DYNAMIC_MINOR,
+    .name = "samoled_color",
     };
 
 static int __init colorcontrol_init(void)
@@ -333,6 +342,7 @@ static int __init colorcontrol_init(void)
     pr_info("%s misc_register(%s)\n", __FUNCTION__, colorcontrol_device.name);
 
     ret = misc_register(&colorcontrol_device);
+
     pr_info("%s misc_register(%s)\n", __FUNCTION__, samoled_color_device.name);
 
     ret = misc_register(&samoled_color_device);
@@ -349,11 +359,12 @@ static int __init colorcontrol_init(void)
 	    pr_err("%s sysfs_create_group fail\n", __FUNCTION__);
 	    pr_err("Failed to create sysfs group for device (%s)!\n", colorcontrol_device.name);
 	}
-    if (sysfs_create_group(&samoled_color_device.this_device->kobj, &colorcontrol_group) < 0) 
-	{
-	    pr_err("%s sysfs_create_group fail\n", __FUNCTION__);
-	    pr_err("Failed to create sysfs group for device (%s)!\n", samoled_color_device.name);
-	}
+
+    if (sysfs_create_group(&samoled_color_device.this_device->kobj, &colorcontrol_group) < 0)
+    {
+        pr_err("%s sysfs_create_group fail\n", __FUNCTION__);
+        pr_err("Failed to create sysfs group for device (%s)!\n", samoled_color_device.name);
+    }
 
     return 0;
 }
