@@ -15,7 +15,7 @@
 
 extern void colorcontrol_update(bool multiplier_updated);
 
-static bool safety_enabled = true;
+static bool safety_enabled = false;
 
 // this is to keep up with cm9 changes
 static int pre_offset = 0;
