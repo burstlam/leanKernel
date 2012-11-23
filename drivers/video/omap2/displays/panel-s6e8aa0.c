@@ -39,7 +39,7 @@
 #include <linux/uaccess.h>
 
 /* contrast tweak from morfic - Trinity Kernel */
-static int contrast = -24;
+static int contrast = -10;
 module_param(contrast, int, 0755);
 
 #ifdef CONFIG_COLOR_CONTROL
