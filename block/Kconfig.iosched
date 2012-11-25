@@ -127,6 +127,9 @@ choice
 	config DEFAULT_NOOP
 		bool "No-op"
 
+    config DEFAULT_FIFO
+        bool "fifo"
+
 endchoice
 
 config DEFAULT_IOSCHED
@@ -136,6 +139,7 @@ config DEFAULT_IOSCHED
 	default "sio" if DEFAULT_SIO
 	default "bfq" if DEFAULT_BFQ
 	default "noop" if DEFAULT_NOOP
+    default "fifo" if DEFAULT_FIFO
     default "vr" if DEFAULT_VR
 
 endmenu
