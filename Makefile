@@ -347,11 +347,11 @@ CHECK		= sparse
 
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
-CFLAGS_MODULE   =
+CFLAGS_MODULE   = -O2 -mtune=cortex-a9 -march=armv7-a -mfpu=neon -ftree-vectorize
 AFLAGS_MODULE   =
 LDFLAGS_MODULE  =
-CFLAGS_KERNEL	=
-AFLAGS_KERNEL	=
+CFLAGS_KERNEL	= -O2 -mtune=cortex-a9 -march=armv7-a -mfpu=neon -ftree-vectorize -pipe
+AFLAGS_KERNEL	= -O2 -mtune=cortex-a9 -march=armv7-a -mfpu=neon -ftree-vectorize
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
 
 
@@ -364,16 +364,19 @@ LINUXINCLUDE    := -I$(srctree)/arch/$(hdr-arch)/include \
 
 KBUILD_CPPFLAGS := -D__KERNEL__
 
-KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
+KBUILD_CFLAGS   := -Wall -Wno-address -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
-                   -fmodulo-sched -fmodulo-sched-allow-regmoves \
-		   -march=armv7-a -mcpu=cortex-a9 -mtune=cortex-a9 \
-                   -funswitch-loops -fpredictive-commoning -fgcse-after-reload \
-		   -fno-delete-null-pointer-checks
+		   -fno-delete-null-pointer-checks \
+		   -pipe -marm -mfloat-abi=softfp \
+		   -mcpu=cortex-a9 \
+		   -fmodulo-sched -fmodulo-sched-allow-regmoves \
+		   -funswitch-loops -fpredictive-commoning -fgcse-after-reload \
+		   -ftree-vectorize -floop-interchange -floop-strip-mine -floop-block \
+		   -mno-unaligned-access
 KBUILD_AFLAGS_KERNEL :=
-KBUILD_CFLAGS_KERNEL :=
+KBUILD_CFLAGS_KERNEL := -O2 -mtune=cortex-a9 -march=armv7-a -mfpu=neon -ftree-vectorize
 KBUILD_AFLAGS   := -D__ASSEMBLY__
 KBUILD_AFLAGS_MODULE  := -DMODULE
 KBUILD_CFLAGS_MODULE  := -DMODULE
