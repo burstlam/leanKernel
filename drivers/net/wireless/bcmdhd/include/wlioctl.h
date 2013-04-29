@@ -1165,7 +1165,7 @@ typedef struct {
 
 #define WL_AUTH_OPEN_SYSTEM     0   
 #define WL_AUTH_SHARED_KEY      1   
-#define WL_AUTH_OPEN_SHARED		2	
+#define WL_AUTH_OPEN_SHARED		3	
 
 
 #define WL_RADIO_SW_DISABLE     (1<<0)
