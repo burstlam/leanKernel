@@ -382,6 +382,9 @@ extern struct cpufreq_governor cpufreq_gov_lazy;
 #elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_WHEATLEY)
 extern struct cpufreq_governor cpufreq_gov_wheatley;
 #define CPUFREQ_DEFAULT_GOVERNOR  (&cpufreq_gov_wheatley)
+#elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMANDPLUS)
+extern struct cpufreq_governor cpufreq_gov_ondemandplus;
+#define CPUFREQ_DEFAULT_GOVERNOR  (&cpufreq_gov_ondemandplus)
 #endif
 
 
@@ -432,5 +435,8 @@ extern int cpufreq_frequency_table_next_highest(struct cpufreq_policy *policy,
 					struct cpufreq_frequency_table *table,
 					int *index);
 
+extern unsigned int screen_off_max_freq;
+extern unsigned int screen_on_min_freq;
+extern unsigned int max_capped;
 
 #endif /* _LINUX_CPUFREQ_H */
