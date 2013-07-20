@@ -491,7 +491,7 @@ CONFIG_ARM_FLUSH_CONSOLE_ON_RESTART=y
 # CONFIG_USE_OF is not set
 CONFIG_ZBOOT_ROM_TEXT=0x0
 CONFIG_ZBOOT_ROM_BSS=0x0
-CONFIG_CMDLINE="console=ttyFIQ0 androidboot.console=ttyFIQ0 mem=1G vmalloc=480M zcache omap_wdt.timer_margin=30 no_console_suspend"
+CONFIG_CMDLINE="console=ttyFIQ0 androidboot.console=ttyFIQ0 mem=1G vmalloc=480M omap_wdt.timer_margin=30 no_console_suspend"
 # CONFIG_CMDLINE_FROM_BOOTLOADER is not set
 CONFIG_CMDLINE_EXTEND=y
 # CONFIG_CMDLINE_FORCE is not set
@@ -2363,8 +2363,8 @@ CONFIG_ZRAM_FOR_ANDROID=y
 CONFIG_ZRAM_SNAPPY=y
 CONFIG_SNAPPY_COMPRESS=y
 CONFIG_SNAPPY_DECOMPRESS=y
-CONFIG_ZCACHE=y
-CONFIG_ZSMALLOC=y
+# CONFIG_ZCACHE is not set
+# CONFIG_ZSMALLOC is not set
 # CONFIG_ZRAM_DEBUG is not set
 # CONFIG_FB_SM7XX is not set
 CONFIG_MACH_NO_WESTBRIDGE=y
