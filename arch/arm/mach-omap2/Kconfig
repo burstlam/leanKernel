@@ -410,4 +410,14 @@ config UNLOCK_180MHZ
 	bool "Unlock 180Mhz"
 	default n
 
+config TUNA_RIP_1080P
+	bool "Additional 66 MB userspace RAM for Tuna"
+	depends on MACH_TUNA
+	default n
+	help
+	  If enabled, approximately 66 MB of additional
+	  RAM will be available, while 1080p camera
+	  functionality is faulty (and might crash
+	  camera-related applications).
+
 endif
