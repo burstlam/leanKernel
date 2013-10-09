@@ -29,6 +29,7 @@
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
+#include <linux/syscalls.h>
 
 #include <linux/platform_data/mms_ts.h>
 
@@ -117,6 +118,30 @@ static void mms_ts_early_suspend(struct early_suspend *h);
 static void mms_ts_late_resume(struct early_suspend *h);
 #endif
 
+#define BOOSTPULSE "/sys/devices/system/cpu/cpufreq/interactive/boostpulse"
+
+struct boost_tuna {
+        int boostpulse_fd;
+};
+
+static struct boost_tuna boost;
+
+static int boostpulse_open(void)
+{
+        if (boost.boostpulse_fd < 0)
+        {
+                boost.boostpulse_fd = sys_open(BOOSTPULSE, O_WRONLY, 0);
+
+                if (boost.boostpulse_fd < 0)
+                {
+                        pr_info("Error opening %s\n", BOOSTPULSE);
+                        return -1;                
+                }
+        }
+
+        return boost.boostpulse_fd;
+}
+
 static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 {
 	struct mms_ts_info *info = dev_id;
@@ -126,6 +151,8 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 	int i;
 	int sz;
 	u8 reg = MMS_INPUT_EVENT0;
+    int len;
+
 	struct i2c_msg msg[] = {
 		{
 			.addr   = client->addr,
@@ -171,6 +198,16 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 		goto out;
 	    }
 #endif
+
+    if (boostpulse_open() >= 0)
+    {
+            len = sys_write(boost.boostpulse_fd, "1", sizeof(BOOSTPULSE));
+
+            if (len < 0)
+            {
+                    pr_info("Error writing to %s\n", BOOSTPULSE);                        
+            }
+    }
 
 	for (i = 0; i < sz; i += FINGER_EVENT_SZ) {
 		u8 *tmp = &buf[i];
@@ -777,6 +814,8 @@ static int __devinit mms_ts_probe(struct i2c_client *client,
 	struct mms_ts_info *info;
 	struct input_dev *input_dev;
 	int ret = 0;
+
+    boost.boostpulse_fd = -1;
 
 	if (!i2c_check_functionality(adapter, I2C_FUNC_I2C))
 		return -EIO;
