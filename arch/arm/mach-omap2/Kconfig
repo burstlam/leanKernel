@@ -411,7 +411,7 @@ config UNLOCK_180MHZ
 	default n
 
 config TUNA_RIP_ASRAM
-	bool "Additional 66 MB userspace RAM for Tuna"
+	bool "Additional 61 MB userspace RAM for Tuna"
 	depends on MACH_TUNA
 	default n
 	help
