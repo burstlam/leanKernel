@@ -205,11 +205,11 @@ CONFIG_IOSCHED_ZEN=y
 # CONFIG_DEFAULT_DEADLINE is not set
 # CONFIG_DEFAULT_FIOPS is not set
 # CONFIG_DEFAULT_NOOP is not set
-CONFIG_DEFAULT_SIO=y
+# CONFIG_DEFAULT_SIO is not set
 # CONFIG_DEFAULT_VR is not set
-# CONFIG_DEFAULT_ROW is not set
+CONFIG_DEFAULT_ROW=y
 # CONFIG_DEFAULT_ZEN is not set
-CONFIG_DEFAULT_IOSCHED="sio"
+CONFIG_DEFAULT_IOSCHED="row"
 # CONFIG_INLINE_SPIN_TRYLOCK is not set
 # CONFIG_INLINE_SPIN_TRYLOCK_BH is not set
 # CONFIG_INLINE_SPIN_LOCK is not set
@@ -494,7 +494,7 @@ CONFIG_ARM_FLUSH_CONSOLE_ON_RESTART=y
 # CONFIG_USE_OF is not set
 CONFIG_ZBOOT_ROM_TEXT=0
 CONFIG_ZBOOT_ROM_BSS=0
-CONFIG_CMDLINE="console=ttyFIQ0 androidboot.console=ttyFIQ0 mem=1G vmalloc=768M omap_wdt.timer_margin=30 no_console_suspend androidboot.selinux=permissive"
+CONFIG_CMDLINE="console=ttyFIQ0 androidboot.console=ttyFIQ0 mem=1G vmalloc=768M omap_wdt.timer_margin=30 no_console_suspend"
 # CONFIG_CMDLINE_FROM_BOOTLOADER is not set
 CONFIG_CMDLINE_EXTEND=y
 # CONFIG_CMDLINE_FORCE is not set
