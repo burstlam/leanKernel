@@ -243,11 +243,19 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 	  else if [ -x /bin/bash ]; then echo /bin/bash; \
 	  else echo sh; fi ; fi)
 
-HOSTCC       = ccache gcc
-HOSTCXX      = ccache g++
-HOSTCFLAGS   = -Wall -W -Wmissing-prototypes -Wno-sign-compare -Wstrict-prototypes -Wno-unused-parameter -Wno-missing-field-initializers -O2 -fomit-frame-pointer -fno-delete-null-pointer-checks
-HOSTCXXFLAGS = -O2 -Wall -W -fno-delete-null-pointer-checks
-
+HOSTCC = gcc
+HOSTCXX = g++
+HOSTCFLAGS = -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer
+HOSTCXXFLAGS = -O2
+HOSTCC = $(CCACHE) gcc
+HOSTCXX = $(CCACHE) g++
+ifdef CCONFIG_CC_OPTIMIZE_O3
+ HOSTCFLAGS = -Wall -W -Wmissing-prototypes -Wno-sign-compare -Wstrict-prototypes -Wno-unused-parameter -Wno-missing-field-initializers -Ofast -fno-delete-null-pointer-checks
+ HOSTCXXFLAGS = -Ofast -Wall -W -fno-delete-null-pointer-checks
+else
+ HOSTCFLAGS = -Wall -W -Wmissing-prototypes -Wno-sign-compare -Wstrict-prototypes -Wno-unused-parameter -Wno-missing-field-initializers -O2 -fno-delete-null-pointer-checks
+ HOSTCXXFLAGS = -O2 -Wall -W -fno-delete-null-pointer-checks
+endif
 # Decide whether to build built-in, modular, or both.
 # Normally, just do built-in.
 
@@ -330,7 +338,7 @@ include $(srctree)/scripts/Kbuild.include
 
 AS		= $(CROSS_COMPILE)as
 LD		= $(CROSS_COMPILE)ld
-CC		= ccache $(CROSS_COMPILE)gcc
+CC		= $(CROSS_COMPILE)gcc
 CPP		= $(CC) -E
 AR		= $(CROSS_COMPILE)ar
 NM		= $(CROSS_COMPILE)nm
@@ -375,15 +383,20 @@ KBUILD_CFLAGS   := -Wall -Wno-address -Wundef -Wstrict-prototypes -Wno-trigraphs
 		   -funswitch-loops -fpredictive-commoning -fgcse-after-reload \
 		   -mno-unaligned-access
 KBUILD_AFLAGS_KERNEL :=
-KBUILD_CFLAGS_KERNEL := -O2 -mtune=cortex-a9 -march=armv7-a -mfpu=neon -ftree-vectorize
+ifdef CCONFIG_CC_OPTIMIZE_O3
+ KBUILD_CFLAGS_KERNEL := -Ofast -mtune=cortex-a9 -march=armv7-a -mfpu=neon -ftree-vectorize -fuse-linker-plugin
+ KBUILD_LDFLAGS_KERNEL := -Wl,--hash-style=gnu -Wl,-O1 -Wl,--as-needed -fuse-linker-plugin -fuse-ld=gold
+else
+ KBUILD_CFLAGS_KERNEL := -O2 -mtune=cortex-a9 -march=armv7-a -mfpu=neon -ftree-vectorize
+endif
 
 ifdef CONFIG_CC_GRAPHITE_OPTIMIZATION
-KBUILD_CFLAGS        += -floop-interchange -floop-strip-mine \
+KBUILD_CFLAGS += -fgraphite-identity -floop-parallelize-all -floop-interchange -floop-strip-mine \
                  -floop-block
 endif
 
 ifdef CONFIG_CC_LINK_TIME_OPTIMIZATION
-KBUILD_CFLAGS        += -flto -fno-toplevel-reorder
+KBUILD_CFLAGS += -flto -fno-toplevel-reorder -fno-fat-lto-objects -ftlo=2
 endif
 
 KBUILD_AFLAGS   := -D__ASSEMBLY__
@@ -575,8 +588,12 @@ all: vmlinux
 
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= -Os
-else
+endif
+ifdef CONFIG_CC_OPTIMIZE_DEFAULT
 KBUILD_CFLAGS	+= -O2
+endif
+ifdef CONFIG_CC_OPTIMIZE_O3
+KBUILD_CFLAGS  += -Ofast
 endif
 
 include $(srctree)/arch/$(SRCARCH)/Makefile
