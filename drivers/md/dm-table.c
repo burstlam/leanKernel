@@ -1286,8 +1286,6 @@ static bool dm_table_supports_flush(struct dm_table *t, unsigned flush)
 void dm_table_set_restrictions(struct dm_table *t, struct request_queue *q,
 			       struct queue_limits *limits)
 {
-	unsigned flush = 0;
-
 	/*
 	 * Copy table's limits to the DM device's request_queue
 	 */
@@ -1297,13 +1295,6 @@ void dm_table_set_restrictions(struct dm_table *t, struct request_queue *q,
 		queue_flag_clear_unlocked(QUEUE_FLAG_DISCARD, q);
 	else
 		queue_flag_set_unlocked(QUEUE_FLAG_DISCARD, q);
-
-	if (dm_table_supports_flush(t, REQ_FLUSH)) {
-		flush |= REQ_FLUSH;
-		if (dm_table_supports_flush(t, REQ_FUA))
-			flush |= REQ_FUA;
-	}
-	blk_queue_flush(q, flush);
 
 	dm_table_set_integrity(t);
 
