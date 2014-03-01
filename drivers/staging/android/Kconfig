@@ -95,7 +95,6 @@ config ANDROID_INTF_ALARM_DEV
 	  Provides non-wakeup and rtc backed wakeup alarms based on rtc or
 	  elapsed realtime, and a non-wakeup alarm on the monotonic clock.
 	  Also exports the alarm interface to user-space.
->>>>>>> 0ac3270... Upgrade android drivers to 3.4 version
 
 endif # if ANDROID
 
